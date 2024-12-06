@@ -1,13 +1,20 @@
 #!/usr/bin/env sage
 
 from sage.all import GF, PolynomialRing
-import hashlib
 import ecdsa
 import random
+import bitcoinlib
+import asn1
+import hashlib
 
 def separator():
 	print("-" * 150)
 
+file = open("../signatures/signatures.txt", "r")
+out = open("../signatures/results.txt", "a")
+f = file.read().split("\n")
+pk_target = f[0]
+signatures = f[1:]
 
 #####################
 # global parameters #
@@ -38,7 +45,7 @@ separator()
 # the number of unknown coefficients in the recurrence equation is N-2
 # the degree of the final polynomial in d is 1 + Sum_(i=1)^(i=N-3)i
 
-N = 4
+N = 6
 assert N >= 4
 
 ############################################################
@@ -67,53 +74,107 @@ for i in range(N-1):
 # assert k[1] == ((a[1]*k[0] + a[0]) % usedcurve.n)
 
 # then, we generate the signatures using the nonces
-h = []
-sgns = []
-for i in range(N):
-	digest_fnc = hashlib.new("sha256")
-	digest_fnc.update(b"recurrence test ")
-	digest_fnc.update(i.to_bytes(1, 'big'))
-	h.append(digest_fnc.digest())
-	# get hash values as integers and comply with ECDSA
-	# strangely, it seems that the ecdsa module does not take the leftmost bits of hash if hash size is bigger than curve... perahps is because i use low level functions
-	if usedcurve.order.bit_length() < 256:
-		h[i] = (int.from_bytes(h[i], "big") >> (256 - usedcurve.order.bit_length())) % usedcurve.order
-	else:
-		h[i] = int.from_bytes(h[i], "big") % usedcurve.order
-	sgns.append(privkey.sign( h[i], k[i] ))
+# h = []
+# sgns = []
+# for i in range(N):
+# 	digest_fnc = hashlib.new("sha256")
+# 	digest_fnc.update(b"recurrence test ")
+# 	digest_fnc.update(i.to_bytes(1, 'big'))
+# 	h.append(digest_fnc.digest())
+# 	# get hash values as integers and comply with ECDSA
+# 	# strangely, it seems that the ecdsa module does not take the leftmost bits of hash if hash size is bigger than curve... perahps is because i use low level functions
+# 	if usedcurve.order.bit_length() < 256:
+# 		h[i] = (int.from_bytes(h[i], "big") >> (256 - usedcurve.order.bit_length())) % usedcurve.order
+# 	else:
+# 		h[i] = int.from_bytes(h[i], "big") % usedcurve.order
+# 	sgns.append(privkey.sign( h[i], k[i] ))
 
 class sign_:
     def __init__(self, r, s):
         self.r = r
         self.s = s
   
+def parse_element(hex_str, offset, element_size):
+    """
+    :param hex_str: string to parse the element from.
+    :type hex_str: hex str
+    :param offset: initial position of the object inside the hex_str.
+    :type offset: int
+    :param element_size: size of the element to extract.
+    :type element_size: int
+    :return: The extracted element from the provided string, and the updated offset after extracting it.
+    :rtype tuple(str, int)
+    """
+
+    return hex_str[offset:offset+element_size], offset+element_size
+
+
+def dissect_signature(hex_sig):
+    """
+    Extracts the r, s and ht components from a Bitcoin ECDSA signature.
+    :param hex_sig: Signature in  hex format.
+    :type hex_sig: hex str
+    :return: r, s, t as a tuple.
+    :rtype: tuple(str, str, str)
+    """
+
+    offset = 0
+    # Check the sig contains at least the size and sequence marker
+    assert len(hex_sig) > 4, "Wrong signature format."
+    sequence, offset = parse_element(hex_sig, offset, 2)
+    # Check sequence marker is correct
+    assert sequence == '30', "Wrong sequence marker."
+    signature_length, offset = parse_element(hex_sig, offset, 2)
+    # Check the length of the remaining part matches the length of the signature + the length of the hashflag (1 byte)
+    #assert len(hex_sig[offset:])/2 == int(signature_length, 16) + 1, "Wrong length."
+    # Get r
+    marker, offset = parse_element(hex_sig, offset, 2)
+    assert marker == '02', "Wrong r marker."
+    len_r, offset = parse_element(hex_sig, offset, 2)
+    len_r_int = int(len_r, 16) * 2   # Each byte represents 2 characters
+    r, offset = parse_element(hex_sig, offset, len_r_int)
+    # Get s
+    marker, offset = parse_element(hex_sig, offset, 2)
+    assert marker == '02', "Wrong s marker."
+    len_s, offset = parse_element(hex_sig, offset, 2)
+    len_s_int = int(len_s, 16) * 2  # Each byte represents 2 characters
+    s, offset = parse_element(hex_sig, offset, len_s_int)
+    # Get ht
+    ht, offset = parse_element(hex_sig, offset, 2)
+    #assert offset == len(hex_sig), "Wrong parsing."
+
+    return r, s, ht
 
 #for s in sgns:
 #	print("Sign: ", sgns[0].s, sgns[0].r)
-sgns = [
-    sign_("7FFB498DF52973A68BE7133DF3545CA9C48BE7B894230F92DF5545AB1F163F17",
-          "0080E0FF45BB9330588FF66EDCB63F622EA38305AEA0DA2315ACC9162C2F2A215D"),
-    sign_("009FA460837830A7FA516BCAE2A8281722D9EAAB02672D4B9B4187E98B020E6E6C",
-          "56D414CC1EEA2E1AF6BE289E3A9ABB61CEA2D770B3FA4A442BCB4781F94FE004"),
-    sign_("07EDC368DD34354CCC48E317CCB9BC6BD3A4A555EB8E5D819856922E097E8D14",
-          "00DEC61AA3CC3CE0A8C5D4CEB7EF32632E6AAD2BAB3846B643E39BEAA492457A6B"),
-    sign_("6EA8A830172366C19AC3CBAF8833B0DF5818D42AC977595FDAD3560841AE0D68",
-          "008F214CC8335ED0587DCE9B7E32B85F12F2FE61094C6F5C2B644A92E73AF001F8"),
-    ]
+decoder = asn1.Decoder()
+h = []
+sgns = []
+c = 0
+for sig in signatures:
+    if(c >= N or len(sig) <= 0):
+        break
+    message = str(c) * 8
+    digest_fnc = hashlib.new("sha256")
+    digest_fnc.update(message.encode('utf-8'))
+    digest = digest_fnc.digest()
+    h.append(int.from_bytes(digest))
+    #print(digest_fnc.hexdigest().upper())
+    #h.append(int.from_bytes(message.encode('utf-8')))
+    #print(int.from_bytes(message.encode('utf-8')))
+    r,s,_ = dissect_signature(sig)
+    sgns.append(bitcoinlib.transactions.Signature(int(r, 16), int(s, 16)))
+    c+=1
 
-#for i in sgns:
-#	print(i.r)
 # get signature parameters as arrays
 s_inv = []
 s = []
 r = []
 for i in range(N):
-	s.append(int(sgns[i].s, 16))
-	r.append(int(sgns[i].r, 16))
+	s.append(sgns[i].s)
+	r.append(sgns[i].r)
 	s_inv.append(ecdsa.numbertheory.inverse_mod(s[i], usedcurve.order))
 
-
-#########################################
 # generating the private-key polynomial #
 #########################################
 
@@ -124,7 +185,7 @@ R = PolynomialRing(Z, names=('dd',))
 
 # the polynomial we construct will have degree 1 + Sum_(i=1)^(i=N-3)i in dd
 # our task here is to compute this polynomial in a constructive way starting from the N signatures in the given list order
-# the generic formula will be given in terms of differences of nonces, i.e. k_ij = k_i - k_j where i and j are the signature indexes
+# the generic formhjula will be given in terms of differences of nonces, i.e. k_ij = k_i - k_j where i and j are the signature indexes
 # each k_ij is a first-degree polynomial in dd
 # this function has the goal of returning it given i and j
 def k_ij_poly(i, j):
@@ -191,6 +252,19 @@ separator()
 
 # check if the private key is among the roots
 for i in d_guesses:
-	print(i[0])
-	if i[0] == d:
-		print("key found!!!")
+    pk = ecdsa.ecdsa.Public_key(g, g * int(i[0]))
+    pk_formatted = "04" + (hex(pk.point.x())[2:] + hex(pk.point.y())[2:]).upper()
+    print("Public key: ", pk_formatted)
+    print("Private key: ", i[0], "\n")
+    if pk_formatted == pk_target:
+        print("key found!!!")
+        out.write("private key: ")
+        out.write(str(i[0]))
+        out.write("\n")
+        out.write("Signatures:\n")
+        for s in signatures:
+            out.write(s)
+            out.write("\n")
+
+file.close()
+out.close()
