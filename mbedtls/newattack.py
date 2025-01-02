@@ -13,7 +13,7 @@ def separator():
 file = open("../signatures/signatures.txt", "r")
 out = open("../signatures/results.txt", "a")
 f = file.read().split("\n")
-pk_target = f[0]
+pk_target = f[0].strip()
 signatures = f[1:]
 
 #####################
@@ -25,20 +25,21 @@ usedcurve = ecdsa.curves.SECP256k1
 # usedcurve = ecdsa.curves.NIST521p
 # usedcurve = ecdsa.curves.BRAINPOOLP160r1
 
+separator()
 print("Selected curve :")
 print(usedcurve.name)
 separator()
 
 # the private key that will be guessed
 g = usedcurve.generator
-d = random.randint(1, usedcurve.order - 1)
-print("TYPES: ", type(g), type(d))
+#d = random.randint(1, usedcurve.order - 1)
+#print("TYPES: ", type(g), type(d))
 
-pubkey = ecdsa.ecdsa.Public_key( g, g * d )
-privkey = ecdsa.ecdsa.Private_key( pubkey, d )
-print("Private key :")
-print(d)
-separator()
+#pubkey = ecdsa.ecdsa.Public_key( g, g * d )
+#privkey = ecdsa.ecdsa.Private_key( pubkey, d )
+#print("Private key :")
+#print(d)
+#separator()
 
 # N = the number of signatures to use, N >= 4
 # the degree of the recurrence relation is N-3
@@ -47,26 +48,27 @@ separator()
 
 N = 6
 assert N >= 4
+assert N <= 10
 
 ############################################################
 # nonces and signature generation with recurrence relation #
 ############################################################
 
 # first, we randomly generate the coefficients of the recurrence relation
-a = []
-for i in range(N-2):
-	a.append(random.randint(1, usedcurve.order - 1))
+#a = []
+#for i in range(N-2):
+#	a.append(random.randint(1, usedcurve.order - 1))
 
 # then, we generate the N nonces
-k = []
+#k = []
 # the first one is random
-k.append(random.randint(1, usedcurve.order - 1))
+#k.append(random.randint(1, usedcurve.order - 1))
 # the other ones are computed with the recurrence equation
-for i in range(N-1):
-	new_k = 0
-	for j in range(N-2):
-		new_k += a[j]*(k[i]**j) % usedcurve.order
-	k.append(new_k)
+#for i in range(N-1):
+#	new_k = 0
+#	for j in range(N-2):
+#		new_k += a[j]*(k[i]**j) % usedcurve.order
+#	k.append(new_k)
 
 # sanity check to see if we generated the parameters correctly
 # print(k[1] % usedcurve.n)
@@ -74,25 +76,25 @@ for i in range(N-1):
 # assert k[1] == ((a[1]*k[0] + a[0]) % usedcurve.n)
 
 # then, we generate the signatures using the nonces
-# h = []
-# sgns = []
-# for i in range(N):
-# 	digest_fnc = hashlib.new("sha256")
-# 	digest_fnc.update(b"recurrence test ")
-# 	digest_fnc.update(i.to_bytes(1, 'big'))
-# 	h.append(digest_fnc.digest())
+#h = []
+#sgns = []
+#for i in range(N):
+#    digest_fnc = hashlib.new("sha256")
+#    digest_fnc.update(b"recurrence test ")
+#    digest_fnc.update(i.to_bytes(1, 'big'))
+#    h.append(digest_fnc.digest())
 # 	# get hash values as integers and comply with ECDSA
 # 	# strangely, it seems that the ecdsa module does not take the leftmost bits of hash if hash size is bigger than curve... perahps is because i use low level functions
-# 	if usedcurve.order.bit_length() < 256:
-# 		h[i] = (int.from_bytes(h[i], "big") >> (256 - usedcurve.order.bit_length())) % usedcurve.order
-# 	else:
-# 		h[i] = int.from_bytes(h[i], "big") % usedcurve.order
+#    if usedcurve.order.bit_length() < 256:
+#        h[i] = (int.from_bytes(h[i], "big") >> (256 - usedcurve.order.bit_length())) % usedcurve.order
+#    else:
+#    	h[i] = int.from_bytes(h[i], "big") % usedcurve.order
 # 	sgns.append(privkey.sign( h[i], k[i] ))
 
-class sign_:
-    def __init__(self, r, s):
-        self.r = r
-        self.s = s
+#class sign_:
+#    def __init__(self, r, s):
+#        self.r = r
+#        self.s = s
   
 def parse_element(hex_str, offset, element_size):
     """
@@ -151,29 +153,36 @@ decoder = asn1.Decoder()
 h = []
 sgns = []
 c = 0
+r = []
+s = []
+s_inv = []
 for sig in signatures:
-    if(c >= N or len(sig) <= 0):
+    if(c >= N or len(sig) <= 1):
         break
     message = str(c) * 8
     digest_fnc = hashlib.new("sha256")
     digest_fnc.update(message.encode('utf-8'))
     digest = digest_fnc.digest()
     h.append(int.from_bytes(digest))
-    #print(digest_fnc.hexdigest().upper())
-    #h.append(int.from_bytes(message.encode('utf-8')))
+    print(digest_fnc.hexdigest().upper())
+    h.append(int.from_bytes(message.encode('utf-8')))
     #print(int.from_bytes(message.encode('utf-8')))
-    r,s,_ = dissect_signature(sig)
-    sgns.append(bitcoinlib.transactions.Signature(int(r, 16), int(s, 16)))
+    r0,s0,_ = dissect_signature(sig)
+    sgns.append(bitcoinlib.transactions.Signature(int(r0, 16), int(s0, 16)))
+    s.append(sgns[c].s)
+    r.append(sgns[c].r)
+    s_inv.append(ecdsa.numbertheory.inverse_mod(s[c], usedcurve.order))
+    print(str(sgns[c]).upper())#, "\nR: ",hex(sgns[c].r), " S: ", hex(sgns[c].s))
     c+=1
 
 # get signature parameters as arrays
-s_inv = []
-s = []
-r = []
-for i in range(N):
-	s.append(sgns[i].s)
-	r.append(sgns[i].r)
-	s_inv.append(ecdsa.numbertheory.inverse_mod(s[i], usedcurve.order))
+#s_inv = []
+#s = []
+#r = []
+#for i in range(N):
+#	s.append(sgns[i].s)
+#	r.append(sgns[i].r)
+#	s_inv.append(ecdsa.numbertheory.inverse_mod(s[i], usedcurve.order))
 
 # generating the private-key polynomial #
 #########################################
@@ -234,6 +243,7 @@ def print_dpoly(n, i, j):
 		print(')', sep='', end='')
 
 
+separator()
 print("Nonces difference equation :")
 print_dpoly(N-4, N-4, 0)
 print(' = 0', sep='', end='')
@@ -255,6 +265,7 @@ for i in d_guesses:
     pk = ecdsa.ecdsa.Public_key(g, g * int(i[0]))
     pk_formatted = "04" + (hex(pk.point.x())[2:] + hex(pk.point.y())[2:]).upper()
     print("Public key: ", pk_formatted)
+    print("Target key: ", pk_target)
     print("Private key: ", i[0], "\n")
     if pk_formatted == pk_target:
         print("key found!!!")

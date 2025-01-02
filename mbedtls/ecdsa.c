@@ -90,8 +90,8 @@ static void dump_pubkey(const char *title, mbedtls_ecdsa_context *key, FILE *out
 int mbedtls_ctr_drbg_nonrandom(void *p_rng,
                                unsigned char *output, size_t output_len)
 {
-    int p = 3;
-    memcpy(output, &p, 1);
+    int p = 2;
+    memset(output, 2, 4);
     return 0;
 }
 
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
         messages[i][9] = '\0';
         //memset(messages[i], i + '0', sizeof(messages[i])-1);
         //messages[i][99] = '\0';
-        //printf("Message: %s\n", messages[i]);
+        printf("Message: %s\n", messages[i]);
         //dump_buf("  + Hash: ", messages[i], sizeof(messages[i]), output);
     }
 
