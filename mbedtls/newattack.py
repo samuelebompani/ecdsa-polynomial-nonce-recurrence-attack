@@ -6,11 +6,16 @@ import random
 import bitcoinlib
 import asn1
 import hashlib
+import sys
+
+from populate import populate
 
 def separator():
 	print("-" * 150)
 
-file = open("../signatures/signatures.txt", "r")
+argv = sys.argv
+print(argv)
+file = open(argv[1], "r")
 out = open("../signatures/results.txt", "a")
 f = file.read().split("\n")
 pk_target = f[0].strip()
@@ -150,31 +155,9 @@ def dissect_signature(hex_sig):
 #for s in sgns:
 #	print("Sign: ", sgns[0].s, sgns[0].r)
 decoder = asn1.Decoder()
-h = []
-sgns = []
-c = 0
-r = []
-s = []
-s_inv = []
-for sig in signatures:
-    if(c >= N or len(sig) <= 1):
-        break
-    message = str(c) * 8
-    digest_fnc = hashlib.new("sha256")
-    digest_fnc.update(message.encode('utf-8'))
-    digest = digest_fnc.digest()
-    h.append(int.from_bytes(digest, "big"))
-    print(digest_fnc.hexdigest().upper())
-    h.append(int.from_bytes(message.encode('utf-8'), "big"))
-    #print(int.from_bytes(message.encode('utf-8')))
-    r0,s0,_ = dissect_signature(sig)
-    sgns.append(bitcoinlib.transactions.Signature(int(r0, 16), int(s0, 16)))
-    s.append(sgns[c].s)
-    r.append(sgns[c].r)
-    s_inv.append(ecdsa.numbertheory.inverse_mod(s[c], usedcurve.order))
-    print(str(sgns[c]).upper())#, "\nR: ",hex(sgns[c].r), " S: ", hex(sgns[c].s))
-    c+=1
 
+
+h, s, r, s_inv = populate(signatures, N)
 # get signature parameters as arrays
 #s_inv = []
 #s = []
