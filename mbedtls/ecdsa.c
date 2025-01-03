@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 #endif
 
     if ((ret = mbedtls_ecdsa_genkey(&ctx_sign, ECPARAMS,
-                                    mbedtls_ctr_drbg_nonrandom, &ctr_drbg)) != 0)
+                                    mbedtls_ctr_drbg_random, &ctr_drbg)) != 0)
     {
         mbedtls_printf(" failed\n  ! mbedtls_ecdsa_genkey returned %d\n", ret);
         goto exit;
