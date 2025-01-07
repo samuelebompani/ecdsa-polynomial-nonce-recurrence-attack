@@ -9,3 +9,12 @@ compile:
 
 run: 
 	./ecdsa
+
+example:
+	python ./weak_generator.py
+
+test: example
+	./newattack.py ../signatures/mock.txt
+
+attack: all
+	./newattack.py ../signatures/signatures.txt

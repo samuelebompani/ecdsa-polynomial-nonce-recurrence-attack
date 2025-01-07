@@ -65,7 +65,7 @@ def populate(signatures, N):
     for sig in signatures:
         if(c >= N or len(sig) <= 1):
             break
-        message = str(c) * 8
+        message = str(c)
         digest_fnc = hashlib.new("sha256")
         digest_fnc.update(message.encode('utf-8'))
         digest = digest_fnc.digest()

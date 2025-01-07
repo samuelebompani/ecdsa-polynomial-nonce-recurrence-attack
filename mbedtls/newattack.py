@@ -2,19 +2,15 @@
 
 from sage.all import GF, PolynomialRing
 import ecdsa
-import random
-import bitcoinlib
 import asn1
-import hashlib
 import sys
 
 from populate import populate
 
 def separator():
-	print("-" * 150)
+	print("-" * 50)
 
 argv = sys.argv
-print(argv)
 file = open(argv[1], "r")
 out = open("../signatures/results.txt", "a")
 f = file.read().split("\n")
@@ -37,21 +33,13 @@ separator()
 
 # the private key that will be guessed
 g = usedcurve.generator
-#d = random.randint(1, usedcurve.order - 1)
-#print("TYPES: ", type(g), type(d))
-
-#pubkey = ecdsa.ecdsa.Public_key( g, g * d )
-#privkey = ecdsa.ecdsa.Private_key( pubkey, d )
-#print("Private key :")
-#print(d)
-#separator()
 
 # N = the number of signatures to use, N >= 4
 # the degree of the recurrence relation is N-3
 # the number of unknown coefficients in the recurrence equation is N-2
 # the degree of the final polynomial in d is 1 + Sum_(i=1)^(i=N-3)i
 
-N = 6
+N = 5
 assert N >= 4
 assert N <= 10
 
@@ -59,113 +47,7 @@ assert N <= 10
 # nonces and signature generation with recurrence relation #
 ############################################################
 
-# first, we randomly generate the coefficients of the recurrence relation
-#a = []
-#for i in range(N-2):
-#	a.append(random.randint(1, usedcurve.order - 1))
-
-# then, we generate the N nonces
-#k = []
-# the first one is random
-#k.append(random.randint(1, usedcurve.order - 1))
-# the other ones are computed with the recurrence equation
-#for i in range(N-1):
-#	new_k = 0
-#	for j in range(N-2):
-#		new_k += a[j]*(k[i]**j) % usedcurve.order
-#	k.append(new_k)
-
-# sanity check to see if we generated the parameters correctly
-# print(k[1] % usedcurve.n)
-# print((a[1]*k[0] + a[0]) % usedcurve.n)
-# assert k[1] == ((a[1]*k[0] + a[0]) % usedcurve.n)
-
-# then, we generate the signatures using the nonces
-#h = []
-#sgns = []
-#for i in range(N):
-#    digest_fnc = hashlib.new("sha256")
-#    digest_fnc.update(b"recurrence test ")
-#    digest_fnc.update(i.to_bytes(1, 'big'))
-#    h.append(digest_fnc.digest())
-# 	# get hash values as integers and comply with ECDSA
-# 	# strangely, it seems that the ecdsa module does not take the leftmost bits of hash if hash size is bigger than curve... perahps is because i use low level functions
-#    if usedcurve.order.bit_length() < 256:
-#        h[i] = (int.from_bytes(h[i], "big") >> (256 - usedcurve.order.bit_length())) % usedcurve.order
-#    else:
-#    	h[i] = int.from_bytes(h[i], "big") % usedcurve.order
-# 	sgns.append(privkey.sign( h[i], k[i] ))
-
-#class sign_:
-#    def __init__(self, r, s):
-#        self.r = r
-#        self.s = s
-  
-def parse_element(hex_str, offset, element_size):
-    """
-    :param hex_str: string to parse the element from.
-    :type hex_str: hex str
-    :param offset: initial position of the object inside the hex_str.
-    :type offset: int
-    :param element_size: size of the element to extract.
-    :type element_size: int
-    :return: The extracted element from the provided string, and the updated offset after extracting it.
-    :rtype tuple(str, int)
-    """
-
-    return hex_str[offset:offset+element_size], offset+element_size
-
-
-def dissect_signature(hex_sig):
-    """
-    Extracts the r, s and ht components from a Bitcoin ECDSA signature.
-    :param hex_sig: Signature in  hex format.
-    :type hex_sig: hex str
-    :return: r, s, t as a tuple.
-    :rtype: tuple(str, str, str)
-    """
-
-    offset = 0
-    # Check the sig contains at least the size and sequence marker
-    assert len(hex_sig) > 4, "Wrong signature format."
-    sequence, offset = parse_element(hex_sig, offset, 2)
-    # Check sequence marker is correct
-    assert sequence == '30', "Wrong sequence marker."
-    signature_length, offset = parse_element(hex_sig, offset, 2)
-    # Check the length of the remaining part matches the length of the signature + the length of the hashflag (1 byte)
-    #assert len(hex_sig[offset:])/2 == int(signature_length, 16) + 1, "Wrong length."
-    # Get r
-    marker, offset = parse_element(hex_sig, offset, 2)
-    assert marker == '02', "Wrong r marker."
-    len_r, offset = parse_element(hex_sig, offset, 2)
-    len_r_int = int(len_r, 16) * 2   # Each byte represents 2 characters
-    r, offset = parse_element(hex_sig, offset, len_r_int)
-    # Get s
-    marker, offset = parse_element(hex_sig, offset, 2)
-    assert marker == '02', "Wrong s marker."
-    len_s, offset = parse_element(hex_sig, offset, 2)
-    len_s_int = int(len_s, 16) * 2  # Each byte represents 2 characters
-    s, offset = parse_element(hex_sig, offset, len_s_int)
-    # Get ht
-    ht, offset = parse_element(hex_sig, offset, 2)
-    #assert offset == len(hex_sig), "Wrong parsing."
-
-    return r, s, ht
-
-#for s in sgns:
-#	print("Sign: ", sgns[0].s, sgns[0].r)
-decoder = asn1.Decoder()
-
-
 h, s, r, s_inv = populate(signatures, N)
-# get signature parameters as arrays
-#s_inv = []
-#s = []
-#r = []
-#for i in range(N):
-#	s.append(sgns[i].s)
-#	r.append(sgns[i].r)
-#	s_inv.append(ecdsa.numbertheory.inverse_mod(s[i], usedcurve.order))
 
 # generating the private-key polynomial #
 #########################################
@@ -226,22 +108,22 @@ def print_dpoly(n, i, j):
 		print(')', sep='', end='')
 
 
-separator()
-print("Nonces difference equation :")
-print_dpoly(N-4, N-4, 0)
-print(' = 0', sep='', end='')
-print()
-separator()
+#separator()
+#print("Nonces difference equation :")
+#print_dpoly(N-4, N-4, 0)
+#print(' = 0', sep='', end='')
+#print()
+#separator()
 
 poly_target = dpoly(N-4, N-4, 0)
-print("Polynomial in d :")
-print(poly_target)
-separator()
+#print("Polynomial in d :")
+#print(poly_target)
+#separator()
 
 d_guesses = poly_target.roots()
-print("Roots of the polynomial :")
-print(d_guesses)
-separator()
+#print("Roots of the polynomial :")
+#print(d_guesses)
+#separator()
 
 # check if the private key is among the roots
 for i in d_guesses:

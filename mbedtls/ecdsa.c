@@ -19,7 +19,7 @@
 #include <string.h>
 #endif
 
-#define N_SIGNS 6
+#define N_SIGNS 4
 //#define CONSOLE_OUTPUT
 /*
  * Uncomment to show key and signature details
@@ -91,7 +91,8 @@ int mbedtls_ctr_drbg_nonrandom(void *p_rng,
                                unsigned char *output, size_t output_len)
 {
     int p = 2;
-    memset(output, 2, 4);
+    memset(output, output_len-1, 0);
+    output[output_len-1] = p;
     return 0;
 }
 
@@ -111,7 +112,7 @@ int main(int argc, char *argv[])
     mbedtls_ecp_point_init(&Q);
     mbedtls_entropy_context entropy;
     mbedtls_ctr_drbg_context ctr_drbg, ctr_drbg2;
-    unsigned char *messages[N_SIGNS];
+    unsigned char messages[N_SIGNS][2];
     unsigned char hash[N_SIGNS][32];
     unsigned char signs[N_SIGNS][MBEDTLS_ECDSA_MAX_LEN];
     size_t sig_len[N_SIGNS];
@@ -127,16 +128,13 @@ int main(int argc, char *argv[])
     for (int i = 0; i < N_SIGNS; i++)
     {
         memset(signs[i], 0, sizeof(signs[i]));
-        messages[i] = malloc(10*sizeof(char));
-        for (int j = 0; j < 9; j++)
-        {
-            messages[i][j] = i + '0';
-        }
+        snprintf(messages[i], sizeof(messages[i]), "%d", i);
         
-        messages[i][9] = '\0';
+        
+        printf("Message: %s\n", messages[i]);
         //memset(messages[i], i + '0', sizeof(messages[i])-1);
         //messages[i][99] = '\0';
-        printf("Message: %s\n", messages[i]);
+        //printf("Message: %s\n", messages[i]);
         //dump_buf("  + Hash: ", messages[i], sizeof(messages[i]), output);
     }
 
@@ -197,14 +195,14 @@ int main(int argc, char *argv[])
     for (int i = 0; i < N_SIGNS; i++)
     {
         //dump_buf("  + Hash: ", messages[i], sizeof(messages[i]), output);
-        if ((ret = mbedtls_sha256(messages[i], sizeof(messages[i]), hash[i], 0)) != 0)
+        if ((ret = mbedtls_sha256(messages[i], sizeof(char), hash[i], 0)) != 0)
         {
             mbedtls_printf(" failed\n  ! mbedtls_sha256 returned %d\n", ret);
             goto exit;
         }
         else
         {
-            //dump_buf("  + Hash: ", messages[i], sizeof(messages[i]), output);
+            //printf("  + Message: %s\n", messages[i]);
             //dump_buf("  + Hash: ", hash[i], sizeof(hash[i]), output);
         }
         //printf("\nHash: %s\n", hash[i]);
