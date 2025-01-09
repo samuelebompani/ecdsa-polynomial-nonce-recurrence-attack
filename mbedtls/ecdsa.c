@@ -19,7 +19,7 @@
 #include <string.h>
 #endif
 
-#define N_SIGNS 4
+#define N_SIGNS 5
 //#define CONSOLE_OUTPUT
 /*
  * Uncomment to show key and signature details

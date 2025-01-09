@@ -39,7 +39,7 @@ g = usedcurve.generator
 # the number of unknown coefficients in the recurrence equation is N-2
 # the degree of the final polynomial in d is 1 + Sum_(i=1)^(i=N-3)i
 
-N = 4
+N = 5
 assert N >= 4
 assert N <= 10
 
