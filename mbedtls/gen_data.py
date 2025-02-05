@@ -1,11 +1,13 @@
 import hashlib
 from populate import dissect_signature
 import itertools
+import nest_asyncio
+nest_asyncio.apply()
 
-l = list(itertools.product(range(0,16), repeat=4))
+l = list(itertools.product(range(0,16), repeat=6))
 for i in l:
-    file = open("../signatures/signatures.txt", "r")
-    name = str(i[0])+str(i[1])+str(i[2])+str(i[3])
+    file = open("../signatures/mock.txt", "r")
+    name = str(i[0])+str(i[1])+str(i[2])+str(i[3])+str(i[4])+str(i[5])
     out = open("./data/data"+name+".json", "w")
     f = file.read().split("\n")
     public_key = f[0].strip()
@@ -24,7 +26,6 @@ for i in l:
         if(len(s) < 1):
             break
         r, s, _ = dissect_signature(s)
-        print(r,s)
         formatted_signatures += '{ "r": ' + str(int(r, 16)) + ', "s": ' + str(int(s, 16)) + ', "kp": '+str(i[idx])+', "hash": '+ digest +'},'
 
     out.write('{"curve": "SECP256K1", "public_key": ['+str(public_x)+', '+str(public_y)+

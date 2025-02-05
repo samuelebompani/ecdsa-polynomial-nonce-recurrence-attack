@@ -3,7 +3,7 @@ from hashlib import sha256
 import hashlib
 import random
 
-N = 5
+N = 6
 usedcurve = curves.SECP256k1
 
 a = []
