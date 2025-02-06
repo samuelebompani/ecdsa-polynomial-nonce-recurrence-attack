@@ -19,7 +19,7 @@
 #include <string.h>
 #endif
 
-#define N_SIGNS 6
+//#define N_SIGNS 6
 //#define CONSOLE_OUTPUT
 /*
  * Uncomment to show key and signature details
@@ -59,13 +59,13 @@ static void dump_buf(const char *title, unsigned char *buf, size_t len, FILE *ou
         mbedtls_printf("%c%c", "0123456789ABCDEF"[buf[i] / 16],
                         "0123456789ABCDEF"[buf[i] % 16]);
 #endif
-        fprintf(output, "%c%c", "0123456789ABCDEF"[buf[i] / 16],
+        printf("%c%c", "0123456789ABCDEF"[buf[i] / 16],
                        "0123456789ABCDEF"[buf[i] % 16]);
     }
 #if defined(CONSOLE_OUTPUT)
     mbedtls_printf("\n");
 #endif
-    fprintf(output, "\n");
+    printf(" ");
 }
 
 static void dump_pubkey(const char *title, mbedtls_ecdsa_context *key, FILE *output)
@@ -105,6 +105,17 @@ int main(int argc, char *argv[])
     printf("\nNON DETERMINISTIC ECDSA\n");
 #endif
 #endif
+    char *p;
+    int num;
+
+    long conv = strtol(argv[1], &p, 10);
+    if (*p != '\0' || conv > INT_MAX || conv < INT_MIN) {
+        num = 4;
+    } else {
+        num = conv;
+    }
+    #define N_SIGNS num
+
     int ret = 1;
     int exit_code = MBEDTLS_EXIT_FAILURE;
     mbedtls_ecdsa_context ctx_sign, ctx_verify;
@@ -130,15 +141,16 @@ int main(int argc, char *argv[])
         memset(signs[i], 0, sizeof(signs[i]));
         snprintf(messages[i], sizeof(messages[i]), "%d", i);
         
-        
-        printf("Message: %s\n", messages[i]);
+        // Print the message
+        printf("%s ", messages[i]);
         //memset(messages[i], i + '0', sizeof(messages[i])-1);
         //messages[i][99] = '\0';
         //printf("Message: %s\n", messages[i]);
         //dump_buf("  + Hash: ", messages[i], sizeof(messages[i]), output);
     }
+    printf("\n");
 
-    if (argc != 1)
+    if (argc != 2)
     {
         mbedtls_printf("usage: ecdsa\n");
 #if defined(_WIN32)
@@ -183,7 +195,7 @@ int main(int argc, char *argv[])
 #endif
 
     dump_pubkey("  + Public key: ", &ctx_sign, output);
-
+    printf("\n");
     /*
      * Compute message hash
      */
@@ -203,10 +215,11 @@ int main(int argc, char *argv[])
         else
         {
             //printf("  + Message: %s\n", messages[i]);
-            //dump_buf("  + Hash: ", hash[i], sizeof(hash[i]), output);
+            dump_buf("  + Hash: ", hash[i], sizeof(hash[i]), output);
         }
         //printf("\nHash: %s\n", hash[i]);
     }
+    printf("\n");
 #if defined(CONSOLE_OUTPUT)
     mbedtls_printf(" ok\n");
 #endif

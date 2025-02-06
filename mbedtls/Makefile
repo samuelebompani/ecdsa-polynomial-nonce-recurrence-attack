@@ -18,3 +18,6 @@ test: example
 
 attack: all
 	./newattack.py ../signatures/signatures.txt
+
+complete:
+	./complete-attack.py 10 4
