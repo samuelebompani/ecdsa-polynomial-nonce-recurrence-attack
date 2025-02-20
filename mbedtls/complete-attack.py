@@ -7,6 +7,8 @@ import sys
 import nest_asyncio
 import multiprocessing
 import itertools
+
+#from weak_generator import generate_weak_signatures
 nest_asyncio.apply()
 
 def parse_element(hex_str, offset, element_size):
@@ -60,18 +62,13 @@ def dissect_signature(hex_sig):
 
     return r, s, ht
 
-
-
-def attack(n_signs):
+def generate(n_signs):
     # Run the ecdsa signatures generator
     result = subprocess.run(["./ecdsa", n_signs], capture_output=True, text=True)
     output = result.stdout.split("\n")
 
     assert len(output) > 0
-
-    # The first line of the output are the messages
-    messages = output[0].split()
-
+    
     # The second line of the output is the target public key
     target_key = output[1]
 
@@ -80,18 +77,30 @@ def attack(n_signs):
 
     # The fourth line of the output are the signatures
     signatures = output[3].split()
+    
+    return target_key, h, signatures
 
+def status(percent):
+    sys.stdout.write("%3d%%\r" % percent)
+    sys.stdout.flush()
+
+def attack(n_signs):
+    
+    target_key, h, signatures = generate(n_signs)
+    
     # The used curve is SECP256k1
     usedcurve = ecdsa.curves.SECP256k1
     g = usedcurve.generator
-    
+        
     # N = the number of signatures to use, N >= 4
     # the degree of the recurrence relation is N-3
     # the number of unknown coefficients in the recurrence equation is N-2
     # the degree of the final polynomial in d is 1 + Sum_(i=1)^(i=N-3)i
-    N = len(signatures)
+    N = int(n_signs)
     assert N >= 4
     assert N <= 10
+    
+    #target_key, h, signatures = generate_weak_signatures(N)
 
     # declaring stuff for manipulating polynomials with SAGE
     Z = GF(usedcurve.order)
@@ -201,9 +210,12 @@ def main():
     success = []
     fail = 0
     
+    count = 0
     # Use multiprocessing to execute the attack in parallel
     with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
         results = pool.map(attack, [n_signs] * limit)
+        count +=1
+        status(count*100/limit)
 
     # Aggregate results
     fail = sum(result[0] for result in results)
@@ -211,7 +223,8 @@ def main():
     
     # Print the results
     print("Wrong guesses: ", fail)
-    print("Success: ", success)
+    print("Successful guesses: ", len(success))
+    print("Solutions: ", success)
         
 if __name__ == "__main__":
     main()

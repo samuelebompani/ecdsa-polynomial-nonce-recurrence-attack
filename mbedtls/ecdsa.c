@@ -25,6 +25,7 @@
  * Uncomment to show key and signature details
  */
 #define VERBOSE
+//#define COMPLETE_OUTPUT
 
 /*
  * Uncomment to force use of a specific curve
@@ -130,7 +131,7 @@ int main(int argc, char *argv[])
     const char *pers = "ecdsa";
     ((void)argv);
     FILE *output;
-    output = fopen("../signatures/signatures.txt", "w");
+    output = fopen("../signatures/mock.txt", "w");
 
     mbedtls_ecdsa_init(&ctx_sign);
     mbedtls_ecdsa_init(&ctx_verify);
@@ -142,13 +143,17 @@ int main(int argc, char *argv[])
         snprintf(messages[i], sizeof(messages[i]), "%d", i);
         
         // Print the message
+#if defined(COMPLETE_OUTPUT)
         printf("%s ", messages[i]);
+#endif
         //memset(messages[i], i + '0', sizeof(messages[i])-1);
         //messages[i][99] = '\0';
         //printf("Message: %s\n", messages[i]);
         //dump_buf("  + Hash: ", messages[i], sizeof(messages[i]), output);
     }
+#if defined(COMPLETE_OUTPUT)
     printf("\n");
+#endif
 
     if (argc != 2)
     {
@@ -214,12 +219,16 @@ int main(int argc, char *argv[])
         }
         else
         {
+#if defined(COMPLETE_OUTPUT)
             //printf("  + Message: %s\n", messages[i]);
             dump_buf("  + Hash: ", hash[i], sizeof(hash[i]), output);
+#endif
         }
         //printf("\nHash: %s\n", hash[i]);
     }
+#if defined(COMPLETE_OUTPUT)
     printf("\n");
+#endif
 #if defined(CONSOLE_OUTPUT)
     mbedtls_printf(" ok\n");
 #endif
