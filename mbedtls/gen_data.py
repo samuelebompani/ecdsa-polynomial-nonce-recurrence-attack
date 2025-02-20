@@ -1,6 +1,5 @@
 import hashlib
 from populate import dissect_signature
-import itertools
 import subprocess
 import multiprocessing
 import sys
@@ -38,7 +37,6 @@ n_signs = "100"
 if(len(sys.argv) > 2):
     N = int(sys.argv[1])
     n_signs = sys.argv[2]
-l = list(itertools.product(range(0,2), repeat=N))
 l = range(0, 2**N)
 result = subprocess.run(["./ecdsa", n_signs], capture_output=True, text=True)
 args = [(i, result) for i in l]
