@@ -2,20 +2,14 @@ import hashlib
 from populate import dissect_signature
 import itertools
 import subprocess
+import multiprocessing
+import sys
 import nest_asyncio
 nest_asyncio.apply()
 
-N = 6
-l = list(itertools.product(range(0,2), repeat=N))
-l = range(0, 2**N)
-for i in l:
-    file = open("../signatures/mock.txt", "r")
-    result = subprocess.run(["./ecdsa", "10"], capture_output=True, text=True)
+def run_lattice(i, result):
     name = ""+str(i)
-    #for j in range(0,N):
-    #    name += str(i[j])
     out = open("./data/data"+name+".json", "w")
-    
     f = result.stdout.split("\n")
     public_key = f[0].strip()
     signatures = f[1].split(" ")
@@ -23,7 +17,6 @@ for i in l:
     public_uncompressed = public_key[2:]
     public_x = int(public_uncompressed[:64], 16)
     public_y = int(public_uncompressed[64:], 16)
-
     formatted_signatures = ""
     #kb = "".join([str(x) for x in i])
     for idx, sig in enumerate(signatures):
@@ -38,5 +31,17 @@ for i in l:
 
     out.write('{"curve": "SECP256K1", "public_key": ['+str(public_x)+', '+str(public_y)+
               '], "known_type": "MSB", "known_bits": '+str(N)+', "signatures": ['+ formatted_signatures[:-1] +']}')
-print("Done")
+
+
+N = 6
+n_signs = "100"
+if(len(sys.argv) > 2):
+    N = int(sys.argv[1])
+    n_signs = sys.argv[2]
+l = list(itertools.product(range(0,2), repeat=N))
+l = range(0, 2**N)
+result = subprocess.run(["./ecdsa", n_signs], capture_output=True, text=True)
+args = [(i, result) for i in l]
+with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+    results = pool.starmap(run_lattice, args)
 
